@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <errno.h>
+#include "db_connection.h"
 
 #define MAXEVENTS 64
 
@@ -78,6 +79,45 @@ static int create_and_bind(char *port)
   return sfd;
 }
 
+const char *check_user(const char *query_part)
+{
+  printf("check user\n");
+  check_user_existence("1", "pswd");
+  return "OK";
+}
+
+const char *update_nick(const char *query_part)
+{
+  update_user_nickname("1", "updated");
+  return "OK";
+}
+
+const char *query_database(const char *query_str)
+{
+  int pos = strcspn(query_str, "\n");
+  char *query_type = (char *)malloc(pos + 1);
+  memcpy(query_type, query_str, pos);
+  query_type[pos] = 0;
+  int len_part = strlen(query_str) - pos + 1;
+  char *query_part = (char *)malloc(strlen(query_str) - pos);
+  memcpy(query_part, query_str + (pos + 1), len_part);
+  query_type[len_part - 1] = 0;
+  printf("query_type: %s\n", query_type);
+  printf("query_part: %s\n", query_part);
+  if (strcmp(query_type, "check_user") == 0)
+  {
+    return check_user(query_part);
+  }
+  else if (strcmp(query_type, "update_nick") == 0)
+  {
+    return update_nick(query_part);
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
 int main (int argc, char *argv[])
 {
   int sfd, s;
@@ -88,7 +128,7 @@ int main (int argc, char *argv[])
   if (argc != 2)
   {
     fprintf (stderr, "Usage: %s [port]\n", argv[0]);
-    exit (EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   sfd = create_and_bind(argv[1]);
@@ -127,7 +167,7 @@ int main (int argc, char *argv[])
   }
 
   /* Buffer where events are returned */
-  events = calloc(MAXEVENTS, sizeof event);
+  events = (epoll_event *)calloc(MAXEVENTS, sizeof event);
 
   /* The event loop */
   while (1)
@@ -233,24 +273,17 @@ int main (int argc, char *argv[])
           }
           else if (count == 0)
           {
-            /* End of file. The remote has closed the
-               connection. */
+            /* End of file. The remote has closed the connection. */
             done = 1;
             break;
           }
           write(events[i].data.fd, buf, count);
-          /* Write the buffer to standard output */
-          s = write(1, buf, count);
-          if (s == -1)
-          {
-            perror("write");
-            abort();
-          }
+          query_database(buf);
+          printf("Received: %s || %d\n", buf, count);
         }
         if (done)
         {
-          printf("Closed connection on descriptor %d\n",
-                 events[i].data.fd);
+          printf("Closed connection on descriptor %d\n", events[i].data.fd);
           /* Closing the descriptor will make epoll remove it
              from the set of descriptors which are monitored. */
           close(events[i].data.fd);

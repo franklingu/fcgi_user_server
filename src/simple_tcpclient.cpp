@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <errno.h>
@@ -39,13 +40,13 @@ int main(int argc, char *argv[])
   addr_size = sizeof serverAddr;
   connect(clientSocket, (struct sockaddr *) &serverAddr, addr_size);
 
-  strcpy(buffer, "Hello World\n");
-  send(clientSocket, buffer, 13, 0);
+  strcpy(buffer, "check_user\ngello=test&pswd=1234");
+  send(clientSocket, buffer, 33, 0);
   /*---- Read the message from the server into the buffer ----*/
   recv(clientSocket, buffer, 1024, 0);
 
   /*---- Print the received message ----*/
-  printf("Data received: %s",buffer);
+  printf("Data received: %s\n\n",buffer);
 
   return 0;
 }

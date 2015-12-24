@@ -3,12 +3,11 @@
 
 #include <my_global.h>
 #include <mysql.h>
-#include <iostream>
 #include <string>
+#include <string.h>
 
-using namespace std;
-bool check_user_existence(string username, string password);
-void insert_user(string password, string nickname);
-void update_user_nickname(string username, string nickname);
+int check_user_existence(const char * username, const char * password);
+void insert_user(const char * password, const char * nickname);
+void update_user_nickname(const char * username, const char * nickname);
 
 #endif

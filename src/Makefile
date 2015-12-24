@@ -1,10 +1,10 @@
-all: clean server tcpclient fcgi_server
+all: clean tcpserver tcpclient fcgi_server
 
-tcpserver: simple_tcpserver.c
-	gcc simple_tcpserver.c -o simple_tcpserver
+tcpserver: simple_tcpserver.cpp db_connection.cpp
+	g++ simple_tcpserver.cpp db_connection.cpp -o simple_tcpserver $(shell mysql_config --cflags --libs)
 
-tcpclient: simple_tcpclient.c
-	gcc simple_tcpclient.c -o simple_tcpclient
+tcpclient: simple_tcpclient.cpp
+	g++ simple_tcpclient.cpp -o simple_tcpclient
 
 fcgi_server: fcgi_server.cpp
 	g++ fcgi_server.cpp -lfcgi++ -lfcgi -o fcgi_server
