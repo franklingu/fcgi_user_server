@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string.h>
 #include <string>
+#include <sstream>
+#include <vector>
 // #include "fcgi_stdio.h"
 // #include "fcgiapp.h"
 #include "fcgio.h"
@@ -15,18 +17,22 @@ string get_request_content(const FCGX_Request & request) {
     char * content_length_str = FCGX_GetParam("CONTENT_LENGTH", request.envp);
     unsigned long content_length = STDIN_MAX;
 
-    if (content_length_str) {
+    if (content_length_str)
+    {
         content_length = strtol(content_length_str, &content_length_str, 10);
-        if (*content_length_str) {
+        if (*content_length_str)
+        {
             cerr << "Can't Parse 'CONTENT_LENGTH='"
                  << FCGX_GetParam("CONTENT_LENGTH", request.envp)
                  << "'. Consuming stdin up to " << STDIN_MAX << endl;
         }
-
-        if (content_length > STDIN_MAX) {
+        if (content_length > STDIN_MAX)
+        {
             content_length = STDIN_MAX;
         }
-    } else {
+    }
+    else
+    {
         // Do not read from stdin if CONTENT_LENGTH is missing
         content_length = 0;
     }
@@ -45,6 +51,71 @@ string get_request_content(const FCGX_Request & request) {
     string content(content_buffer, content_length);
     delete [] content_buffer;
     return content;
+}
+
+string get_request_cookie(const FCGX_Request & request)
+{
+    char * cookie_str = FCGX_GetParam("HTTP_COOKIE", request.envp);
+    if (cookie_str)
+    {
+        return string(cookie_str);
+    }
+    else
+    {
+        return "";
+    }
+}
+
+vector<string> &split_str(const string &s, char delim, vector<string> &elems)
+{
+    stringstream ss(s);
+    string item;
+    while (getline(ss, item, delim))
+    {
+        elems.push_back(item);
+    }
+    return elems;
+}
+
+int check_user_signed_in(const FCGX_Request & request)
+{
+    int username = -1;
+    string cookie = get_request_cookie(request);
+    if (cookie == "")
+    {
+        return username;
+    }
+    vector<string> items;
+    split_str(cookie, '&', items);
+    for (int i = 0; i < items.size(); i++)
+    {
+        vector<string> record;
+        split_str(items[i], '=', record);
+        if (record.size() >= 2 && record[0] == "username")
+        {
+            if (record[1].find_first_not_of("0123456789") == string::npos)
+            {
+                username = atoi(record[1].c_str());
+                return username;
+            }
+            else
+            {
+                return username;
+            }
+        }
+    }
+    return username;
+}
+
+void dump_all_env(const FCGX_Request & request)
+{
+    cout << "<PRE>\n";
+    char **env = request.envp;
+    while (*(++env))
+    {
+        cout << *env << "\n";
+    }
+    cout << "</PRE>\n";
 }
 
 void welcome_user(const FCGX_Request & request)
@@ -67,7 +138,13 @@ void welcome_user(const FCGX_Request & request)
 void login_user(const FCGX_Request & request)
 {
     string params = get_request_content(request);
-    cout << "Content-type:text/html\n\n";
+    cout << "Content-type:text/html\n";
+    if (params == "username=1&pswd=pswd") {
+        cout << "Set-Cookie: username=1\n";
+    } else {
+        cout << "Set-Cookie: username=nonuser\n";
+    }
+    cout << "\n";
     cout << "<html>\n";
     cout << "<head>\n";
     cout << "<title>Welcome</title>\n";
@@ -78,15 +155,39 @@ void login_user(const FCGX_Request & request)
     cout << "<html>\n";
 }
 
+void logout_user(const FCGX_Request & request)
+{
+    string params = get_request_content(request);
+    cout << "Content-type:text/html\n";
+    cout << "Set-Cookie: username=nonuser\n";
+    cout << "\n";
+    cout << "<html>\n";
+    cout << "<head>\n";
+    cout << "<title>You are logged out</title>\n";
+    cout << "</head>\n";
+    cout << "<body>\n";
+    cout << params;
+    cout << "</body>\n";
+    cout << "<html>\n";
+}
+
 void display_user(const FCGX_Request & request)
 {
-    string username = "1";
     cout << "Content-type:text/html\n\n";
     cout << "<html>\n";
     cout << "<head>\n";
-    cout << "<title>Hello, "<< username << "</title>\n";
+    cout << "<title>Hello, "<< "user" << "</title>\n";
     cout << "</head>\n";
     cout << "<body>\n";
+    int username = check_user_signed_in(request);
+    if (username == -1)
+    {
+        cout << "YOU are not logged in";
+    }
+    else
+    {
+        cout << "Welcome, " << username;
+    }
     cout << "<div>\n";
     cout << "<form method=\"post\" action=\"./update_nick\">\n";
     cout << "<input type=\"text\" name=\"nickname\">\n";
@@ -153,6 +254,10 @@ void process_uri(const char *uri, const FCGX_Request & request)
     else if (strcmp(uri, "/login") == 0)
     {
         login_user(request);
+    }
+    else if (strcmp(uri, "/logout") == 0)
+    {
+        logout_user(request);
     }
     else if (strcmp(uri, "/user") == 0)
     {
