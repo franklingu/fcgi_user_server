@@ -3,6 +3,7 @@
 #include <string.h>
 #include <string>
 #include <sstream>
+#include <fstream>
 #include <vector>
 #include "fcgio.h"
 #include "backend_connection.h"
@@ -142,10 +143,10 @@ void welcome_user(const FCGX_Request & request)
     respond_welcome_page(request);
 }
 
-void login_user(const FCGX_Request & request)
+void login_user(const FCGX_Request & request, backend_connection & con)
 {
     string params = get_request_content(request);
-    string backend_response = communicate_with_backend("check_user\n" + params);
+    string backend_response = con.communicate_with_backend("check_user\n" + params);
     cout << "Content-type:text/html\n";
     if (backend_response.find_first_not_of("0123456789") == string::npos) {
         cout << "Set-Cookie: username=" << backend_response << "\n\n";
@@ -196,7 +197,7 @@ void display_user(const FCGX_Request & request)
     cout << "<div style=\"text-align: center; margin: auto;\">\n";
     cout << "<form method=\"post\" enctype=\"multipart/form-data\"";
     cout << " action=\"./update_pic\">\n";
-    cout << "<input type=\"file\" name=\"image\" accept=\"image/jpeg, image/png\"><br>\n";
+    cout << "<input type=\"file\" name=\"image\" accept=\"image/png\"><br>\n";
     cout << "<input type=\"submit\" value=\"Update Picture\"><br>\n";
     cout << "</form>\n";
     cout << "</div>\n";
@@ -207,7 +208,7 @@ void display_user(const FCGX_Request & request)
     cout << "<html>\n";
 }
 
-void update_nick(const FCGX_Request & request)
+void update_nick(const FCGX_Request & request, backend_connection & con)
 {
     int username = check_user_signed_in(request);
     if (username == -1)
@@ -217,7 +218,7 @@ void update_nick(const FCGX_Request & request)
     }
     string params = get_request_content(request);
     params = params + "&username=" + to_string(username);
-    string backend_response = communicate_with_backend("update_nick\n" + params);
+    string backend_response = con.communicate_with_backend("update_nick\n" + params);
     cout << "Content-type:text/html\n\n";
     cout << "<html>\n";
     cout << "<head>\n";
@@ -250,14 +251,31 @@ void update_pic(const FCGX_Request & request)
         return ;
     }
     string params = get_request_content(request);
+    stringstream ss(params);
     cout << "Content-type:text/html\n\n";
     cout << "<html>\n";
     cout << "<head>\n";
-    cout << "<meta http-equiv=\"refresh\" content=\"3;url=./user\">";
+    // cout << "<meta http-equiv=\"refresh\" content=\"3;url=./user\">";
     cout << "<title>Welcome</title>\n";
     cout << "</head>\n";
     cout << "<body>\n";
-    cout << params;
+    string line;
+    vector<string> lines;
+    while (getline(ss, line))
+    {
+        lines.push_back(line);
+    }
+    lines.erase(lines.begin() + 0, lines.begin() + 2);
+    lines.erase(lines.begin() + (lines.size() - 1));
+    string filename = to_string(username) + ".png";
+    ofstream oFile;
+    oFile.open(filename.c_str(), ios::binary);
+    for (int i = 0; i < lines.size(); i++)
+    {
+        cout << lines[i] << "<br>\n";
+        oFile << lines[i];
+    }
+    oFile.close();
     cout << "<div style=\"text-align: center; margin: auto;\">\n";
     cout << "You can <a href=\"./logout\">logout</a> now.";
     cout << "</div>\n";
@@ -277,7 +295,7 @@ void path_not_found(const FCGX_Request & request)
     cout << "<html>\n";
 }
 
-void process_uri(const char *uri, const FCGX_Request & request)
+void process_uri(const char *uri, const FCGX_Request & request, backend_connection & con)
 {
     if (strcmp(uri, "/welcome") == 0 || strcmp(uri, "/index") == 0 || strcmp(uri, "/") == 0)
     {
@@ -285,7 +303,7 @@ void process_uri(const char *uri, const FCGX_Request & request)
     }
     else if (strcmp(uri, "/login") == 0)
     {
-        login_user(request);
+        login_user(request, con);
     }
     else if (strcmp(uri, "/logout") == 0)
     {
@@ -297,7 +315,7 @@ void process_uri(const char *uri, const FCGX_Request & request)
     }
     else if (strcmp(uri, "/update_nick") == 0)
     {
-        update_nick(request);
+        update_nick(request, con);
     }
     else if (strcmp(uri, "/update_pic") == 0)
     {
@@ -314,13 +332,15 @@ int main(void) {
     streambuf * cin_streambuf  = cin.rdbuf();
     streambuf * cout_streambuf = cout.rdbuf();
     streambuf * cerr_streambuf = cerr.rdbuf();
+    backend_connection backend;
 
     FCGX_Request request;
 
     FCGX_Init();
     FCGX_InitRequest(&request, 0, 0);
 
-    while (FCGX_Accept_r(&request) == 0) {
+    while (FCGX_Accept_r(&request) == 0)
+    {
         fcgi_streambuf cin_fcgi_streambuf(request.in);
         fcgi_streambuf cout_fcgi_streambuf(request.out);
         fcgi_streambuf cerr_fcgi_streambuf(request.err);
@@ -330,7 +350,7 @@ int main(void) {
         cerr.rdbuf(&cerr_fcgi_streambuf);
 
         const char *uri = FCGX_GetParam("REQUEST_URI", request.envp);
-        process_uri(uri, request);
+        process_uri(uri, request, backend);
         // Note: the fcgi_streambuf destructor will auto flush
     }
 

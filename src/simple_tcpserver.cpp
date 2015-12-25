@@ -97,7 +97,7 @@ vector<string> &split_str(const string &s, char delim, vector<string> &elems)
     return elems;
 }
 
-const char *check_user(const char *query_part)
+const char *check_user(const char *query_part, db_connection &con)
 {
     string query_part_str = string(query_part);
     vector<string> records;
@@ -123,7 +123,7 @@ const char *check_user(const char *query_part)
     {
         return "nonuser";
     }
-    int id = check_user_existence(username.c_str(), password.c_str());
+    int id = con.check_user_existence(username.c_str(), password.c_str());
     if (id == -1)
     {
         return "nonuser";
@@ -134,7 +134,7 @@ const char *check_user(const char *query_part)
     }
 }
 
-const char *update_nick(const char *query_part)
+const char *update_nick(const char *query_part, db_connection &con)
 {
     string query_part_str = string(query_part);
     vector<string> records;
@@ -164,11 +164,11 @@ const char *update_nick(const char *query_part)
     {
         return "NO";
     }
-    update_user_nickname(username.c_str(), nickname.c_str());
+    con.update_user_nickname(username.c_str(), nickname.c_str());
     return "OK";
 }
 
-const char *query_database(const char *query_str)
+const char *query_database(const char *query_str, db_connection &con)
 {
     int pos = strcspn(query_str, "\n");
     char *query_type = (char *)malloc(pos + 1);
@@ -178,16 +178,24 @@ const char *query_database(const char *query_str)
     char *query_part = (char *)malloc(strlen(query_str) - pos);
     memcpy(query_part, query_str + (pos + 1), len_part);
     query_type[len_part - 1] = 0;
-    if (strcmp(query_type, "check_user") == 0)
+    try
     {
-        return check_user(query_part);
+        if (strcmp(query_type, "check_user") == 0)
+        {
+            return check_user(query_part, con);
+        }
+        else if (strcmp(query_type, "update_nick") == 0)
+        {
+            return update_nick(query_part, con);
+        }
+        else
+        {
+            return NULL;
+        }
     }
-    else if (strcmp(query_type, "update_nick") == 0)
+    catch (const exception &e)
     {
-        return update_nick(query_part);
-    }
-    else
-    {
+        printf("%s\n", e.what());
         return NULL;
     }
 }
@@ -198,6 +206,7 @@ int main (int argc, char *argv[])
     int efd;
     struct epoll_event event;
     struct epoll_event *events;
+    db_connection con;
 
     if (argc != 2)
     {
@@ -351,7 +360,15 @@ int main (int argc, char *argv[])
                         done = 1;
                         break;
                     }
-                    write(events[i].data.fd, query_database(buf), count);
+                    const char *query_result = query_database(buf, con);
+                    if (query_result == NULL)
+                    {
+                        write(events[i].data.fd, "NO\0", sizeof "NO\0");
+                    }
+                    else
+                    {
+                        write(events[i].data.fd, query_result, sizeof query_result);
+                    }
                     printf("Received: %s || %d\n", buf, count);
                 }
                 if (done)

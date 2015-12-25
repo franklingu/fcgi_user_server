@@ -17,4 +17,14 @@ using namespace std;
 
 string communicate_with_backend(string str);
 
+class backend_connection
+{
+public:
+    backend_connection();
+    ~backend_connection();
+    string communicate_with_backend(string str);
+private:
+    int sock;
+};
+
 #endif

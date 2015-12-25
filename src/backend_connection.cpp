@@ -1,9 +1,8 @@
 #include "backend_connection.h"
 
-string communicate_with_backend(string str)
+backend_connection::backend_connection()
 {
     int clientSocket;
-    char buffer[1024];
     struct sockaddr_in serverAddr;
     socklen_t addr_size;
     int destPort = 5432;
@@ -25,12 +24,21 @@ string communicate_with_backend(string str)
     /*---- Connect the socket to the server using the address struct ----*/
     addr_size = sizeof serverAddr;
     connect(clientSocket, (struct sockaddr *) &serverAddr, addr_size);
+    this->sock = clientSocket;
+}
 
+backend_connection::~backend_connection()
+{
+    close(sock);
+}
+
+string backend_connection::communicate_with_backend(string str)
+{
+    char buffer[1024];
     strcpy(buffer, str.c_str());
-    send(clientSocket, buffer, strlen(buffer), 0);
+    send(sock, buffer, strlen(buffer), 0);
     /*---- Read the message from the server into the buffer ----*/
-    recv(clientSocket, buffer, 1024, 0);
-    close(clientSocket);
+    recv(sock, buffer, 1024, 0);
 
     return string(buffer);
 }

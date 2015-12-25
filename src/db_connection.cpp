@@ -2,24 +2,31 @@
 
 using namespace std;
 
-void finish_with_error(MYSQL *con)
+db_connection::db_connection()
 {
-    printf("Connection error: %s\n", mysql_error(con));
-    mysql_close(con);
-    exit(1);
+    this->connection = mysql_init(NULL);
+    connect_to_mysql();
 }
 
-void execute_query(MYSQL *con, const char *query)
+db_connection::~db_connection()
 {
+    mysql_close(connection);
+}
+
+void db_connection::execute_query(const char *query)
+{
+    MYSQL *con = this->connection;
+    printf("Query: %s\n", query);
     if (mysql_query(con, query))
     {
-        finish_with_error(con);
+        string err(mysql_error(con));
+        throw std::runtime_error("Connection Error: " + err);
     }
 }
 
-MYSQL *connect_to_mysql()
+MYSQL *db_connection::connect_to_mysql()
 {
-    MYSQL *con = mysql_init(NULL);
+    MYSQL *con = this->connection;
     if (con == NULL)
     {
         printf("DB error: %s\n", mysql_error(con));
@@ -27,53 +34,47 @@ MYSQL *connect_to_mysql()
     }
     if (mysql_real_connect(con, "localhost", "root", "", NULL, 0, NULL, 0) == NULL)
     {
-        finish_with_error(con);
+        string err(mysql_error(con));
+        throw std::runtime_error("Connection Error: " + err);
     }
-    execute_query(con, "use entry_task;");
+    execute_query("use entry_task;");
     return con;
 }
 
-int check_user_existence(const char * username, const char * password)
+int db_connection::check_user_existence(const char * username, const char * password)
 {
-    MYSQL *con = connect_to_mysql();
     string username_s(username, strlen(username));
     string password_s(password, strlen(password));
     string query = "select username from users where username = " + username_s +
         " and password = '" + password_s + "';";
-    execute_query(con, query.c_str());
-    MYSQL_RES *result = mysql_store_result(con);
-    if (result != NULL) {
+    execute_query(query.c_str());
+    MYSQL_RES *result = mysql_store_result(connection);
+    if (result != NULL)
+    {
         int num_rows = mysql_num_rows(result);
         mysql_free_result(result);
-        mysql_close(con);
         return (num_rows == 0) ? -1 : atoi(username);
-    } else {
-        mysql_close(con);
+    }
+    else
+    {
         return -1;
     }
 }
 
-void insert_user(const char * password, const char * nickname)
+void db_connection::insert_user(const char * password, const char * nickname)
 {
-    MYSQL *con = connect_to_mysql();
-
     string nickname_s(nickname, strlen(nickname));
     string password_s(password, strlen(password));
     string query = "insert into users(password, nickname) values('" + password_s +
         "', '" + nickname_s + "');";
-
-    mysql_close(con);
+    execute_query(query.c_str());
 }
 
-void update_user_nickname(const char * username, const char * nickname)
+void db_connection::update_user_nickname(const char * username, const char * nickname)
 {
-    MYSQL *con = connect_to_mysql();
-
     string nickname_s(nickname, strlen(nickname));
     string username_s(username, strlen(username));
     string query = "update users set nickname = '" + nickname_s +
         "' where username = " + username_s + ";";
-    execute_query(con, query.c_str());
-
-    mysql_close(con);
+    execute_query(query.c_str());
 }
