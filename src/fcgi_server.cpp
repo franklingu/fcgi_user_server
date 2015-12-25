@@ -4,9 +4,8 @@
 #include <string>
 #include <sstream>
 #include <vector>
-// #include "fcgi_stdio.h"
-// #include "fcgiapp.h"
 #include "fcgio.h"
+#include "backend_connection.h"
 
 using namespace std;
 
@@ -146,9 +145,10 @@ void welcome_user(const FCGX_Request & request)
 void login_user(const FCGX_Request & request)
 {
     string params = get_request_content(request);
+    string backend_response = communicate_with_backend("check_user\n" + params);
     cout << "Content-type:text/html\n";
-    if (params == "username=1&pswd=pswd") {
-        cout << "Set-Cookie: username=1\n\n";
+    if (backend_response.find_first_not_of("0123456789") == string::npos) {
+        cout << "Set-Cookie: username=" << backend_response << "\n\n";
     } else {
         cout << "Set-Cookie: username=nonuser\n\n";
         respond_welcome_page(request);
@@ -196,7 +196,7 @@ void display_user(const FCGX_Request & request)
     cout << "<div style=\"text-align: center; margin: auto;\">\n";
     cout << "<form method=\"post\" enctype=\"multipart/form-data\"";
     cout << " action=\"./update_pic\">\n";
-    cout << "<input type=\"file\" name=\"image\"><br>\n";
+    cout << "<input type=\"file\" name=\"image\" accept=\"image/jpeg, image/png\"><br>\n";
     cout << "<input type=\"submit\" value=\"Update Picture\"><br>\n";
     cout << "</form>\n";
     cout << "</div>\n";
@@ -216,13 +216,24 @@ void update_nick(const FCGX_Request & request)
         return ;
     }
     string params = get_request_content(request);
+    params = params + "&username=" + to_string(username);
+    string backend_response = communicate_with_backend("update_nick\n" + params);
     cout << "Content-type:text/html\n\n";
     cout << "<html>\n";
     cout << "<head>\n";
+    cout << "<meta http-equiv=\"refresh\" content=\"3;url=./user\">";
     cout << "<title>Welcome</title>\n";
     cout << "</head>\n";
     cout << "<body>\n";
-    cout << params;
+    if (backend_response == "OK")
+    {
+        cout << "The update is " << backend_response << "<br>\n";
+    }
+    else
+    {
+        cout << "The update is " << "NOT OK" << "<br>\n";
+    }
+    cout << "You will be redirected to <a href=\"./user\">user</a> page";
     cout << "<div style=\"text-align: center; margin: auto;\">\n";
     cout << "You can <a href=\"./logout\">logout</a> now.";
     cout << "</div>\n";
@@ -242,6 +253,7 @@ void update_pic(const FCGX_Request & request)
     cout << "Content-type:text/html\n\n";
     cout << "<html>\n";
     cout << "<head>\n";
+    cout << "<meta http-equiv=\"refresh\" content=\"3;url=./user\">";
     cout << "<title>Welcome</title>\n";
     cout << "</head>\n";
     cout << "<body>\n";

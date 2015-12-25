@@ -46,7 +46,7 @@ int check_user_existence(const char * username, const char * password)
         int num_rows = mysql_num_rows(result);
         mysql_free_result(result);
         mysql_close(con);
-        return (num_rows == 0) ? -1 : 0;
+        return (num_rows == 0) ? -1 : atoi(username);
     } else {
         mysql_close(con);
         return -1;
