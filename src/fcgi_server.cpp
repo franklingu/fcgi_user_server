@@ -118,21 +118,29 @@ void dump_all_env(const FCGX_Request & request)
     cout << "</PRE>\n";
 }
 
-void welcome_user(const FCGX_Request & request)
+void respond_welcome_page(const FCGX_Request & request)
 {
-    cout << "Content-type:text/html\n\n";
     cout << "<html>\n";
     cout << "<head>\n";
     cout << "<title>Welcome</title>\n";
     cout << "</head>\n";
     cout << "<body>\n";
+    cout << "<div style=\"text-align: center; margin: auto;\">\n";
+    cout << "<p>Please login with your username and password</p>\n";
     cout << "<form method=\"post\" action=\"./login\">\n";
-    cout << "<input type=\"text\" name=\"username\">\n";
-    cout << "<input type=\"password\" name=\"pswd\">\n";
+    cout << "<input type=\"text\" name=\"username\"><br>\n";
+    cout << "<input type=\"password\" name=\"pswd\"><br>\n";
     cout << "<input type=\"submit\" value=\"Login\">\n";
     cout << "</form>\n";
+    cout << "</div>";
     cout << "</body>\n";
     cout << "<html>\n";
+}
+
+void welcome_user(const FCGX_Request & request)
+{
+    cout << "Content-type:text/html\n\n";
+    respond_welcome_page(request);
 }
 
 void login_user(const FCGX_Request & request)
@@ -140,66 +148,60 @@ void login_user(const FCGX_Request & request)
     string params = get_request_content(request);
     cout << "Content-type:text/html\n";
     if (params == "username=1&pswd=pswd") {
-        cout << "Set-Cookie: username=1\n";
+        cout << "Set-Cookie: username=1\n\n";
     } else {
-        cout << "Set-Cookie: username=nonuser\n";
+        cout << "Set-Cookie: username=nonuser\n\n";
+        respond_welcome_page(request);
+        return;
     }
-    cout << "\n";
     cout << "<html>\n";
     cout << "<head>\n";
-    cout << "<title>Welcome</title>\n";
+    cout << "<title>Welcome to user system</title>\n";
     cout << "</head>\n";
     cout << "<body>\n";
-    cout << params;
+    cout << "<div style=\"text-align: center; margin: auto;\">\n";
+    cout << "You can see <a href=\"./user\">user page</a> now.";
+    cout << "</div>";
     cout << "</body>\n";
     cout << "<html>\n";
 }
 
 void logout_user(const FCGX_Request & request)
 {
-    string params = get_request_content(request);
     cout << "Content-type:text/html\n";
-    cout << "Set-Cookie: username=nonuser\n";
-    cout << "\n";
-    cout << "<html>\n";
-    cout << "<head>\n";
-    cout << "<title>You are logged out</title>\n";
-    cout << "</head>\n";
-    cout << "<body>\n";
-    cout << params;
-    cout << "</body>\n";
-    cout << "<html>\n";
+    cout << "Set-Cookie: username=nonuser\n\n";
+    respond_welcome_page(request);
 }
 
 void display_user(const FCGX_Request & request)
 {
-    cout << "Content-type:text/html\n\n";
-    cout << "<html>\n";
-    cout << "<head>\n";
-    cout << "<title>Hello, "<< "user" << "</title>\n";
-    cout << "</head>\n";
-    cout << "<body>\n";
     int username = check_user_signed_in(request);
     if (username == -1)
     {
-        cout << "YOU are not logged in";
+        welcome_user(request);
+        return ;
     }
-    else
-    {
-        cout << "Welcome, " << username;
-    }
-    cout << "<div>\n";
+    cout << "Content-type:text/html\n\n";
+    cout << "<html>\n";
+    cout << "<head>\n";
+    cout << "<title>Hello, "<< username << "</title>\n";
+    cout << "</head>\n";
+    cout << "<body>\n";
+    cout << "<div style=\"text-align: center; margin: auto;\">\n";
     cout << "<form method=\"post\" action=\"./update_nick\">\n";
-    cout << "<input type=\"text\" name=\"nickname\">\n";
-    cout << "<input type=\"submit\" value=\"Update Nickname\">\n";
+    cout << "<input type=\"text\" name=\"nickname\"><br>\n";
+    cout << "<input type=\"submit\" value=\"Update Nickname\"><br>\n";
     cout << "</form>\n";
-    cout << "</div>\n";
-    cout << "<div>\n";
+    cout << "</div><br>\n";
+    cout << "<div style=\"text-align: center; margin: auto;\">\n";
     cout << "<form method=\"post\" enctype=\"multipart/form-data\"";
     cout << " action=\"./update_pic\">\n";
-    cout << "<input type=\"file\" name=\"image\">\n";
-    cout << "<input type=\"submit\" value=\"Update Picture\">\n";
+    cout << "<input type=\"file\" name=\"image\"><br>\n";
+    cout << "<input type=\"submit\" value=\"Update Picture\"><br>\n";
     cout << "</form>\n";
+    cout << "</div>\n";
+    cout << "<div style=\"text-align: center; margin: auto;\">\n";
+    cout << "You can <a href=\"./logout\">logout</a> now.";
     cout << "</div>\n";
     cout << "</body>\n";
     cout << "<html>\n";
@@ -207,6 +209,12 @@ void display_user(const FCGX_Request & request)
 
 void update_nick(const FCGX_Request & request)
 {
+    int username = check_user_signed_in(request);
+    if (username == -1)
+    {
+        welcome_user(request);
+        return ;
+    }
     string params = get_request_content(request);
     cout << "Content-type:text/html\n\n";
     cout << "<html>\n";
@@ -215,12 +223,21 @@ void update_nick(const FCGX_Request & request)
     cout << "</head>\n";
     cout << "<body>\n";
     cout << params;
+    cout << "<div style=\"text-align: center; margin: auto;\">\n";
+    cout << "You can <a href=\"./logout\">logout</a> now.";
+    cout << "</div>\n";
     cout << "</body>\n";
     cout << "<html>\n";
 }
 
 void update_pic(const FCGX_Request & request)
 {
+    int username = check_user_signed_in(request);
+    if (username == -1)
+    {
+        welcome_user(request);
+        return ;
+    }
     string params = get_request_content(request);
     cout << "Content-type:text/html\n\n";
     cout << "<html>\n";
@@ -229,6 +246,9 @@ void update_pic(const FCGX_Request & request)
     cout << "</head>\n";
     cout << "<body>\n";
     cout << params;
+    cout << "<div style=\"text-align: center; margin: auto;\">\n";
+    cout << "You can <a href=\"./logout\">logout</a> now.";
+    cout << "</div>\n";
     cout << "</body>\n";
     cout << "<html>\n";
 }
