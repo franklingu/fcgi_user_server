@@ -265,7 +265,8 @@ void update_pic(const FCGX_Request & request)
     {
         lines.push_back(line);
     }
-    lines.erase(lines.begin() + 0, lines.begin() + 2);
+    lines.erase(lines.begin() + 0, lines.begin() + 4);
+    lines.erase(lines.begin() + (lines.size() - 1));
     lines.erase(lines.begin() + (lines.size() - 1));
     string filename = to_string(username) + ".png";
     ofstream oFile;
@@ -273,7 +274,7 @@ void update_pic(const FCGX_Request & request)
     for (int i = 0; i < lines.size(); i++)
     {
         cout << lines[i] << "<br>\n";
-        oFile << lines[i];
+        oFile << lines[i] << "\n";
     }
     oFile.close();
     cout << "<div style=\"text-align: center; margin: auto;\">\n";

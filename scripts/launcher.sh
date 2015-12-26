@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 SECONDS=0
-for (( i = 0; i < 20; i++ )); do
-	./benchmark.py $i pswd &
+for (( i = 0; i < 40; i++ )); do
+	./benchmark.py &
 done
 wait
 duration=$SECONDS

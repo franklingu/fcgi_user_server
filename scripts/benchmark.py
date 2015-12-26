@@ -13,5 +13,5 @@ def login(username, pswd):
 		print("login error")
 
 if __name__ == '__main__':
-	for _ in xrange(1,100):
-		login(sys.argv[1], sys.argv[2])
+	for x in xrange(1, 800):
+		login(str(x % 4), 'pswd')
