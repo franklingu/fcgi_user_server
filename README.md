@@ -52,6 +52,7 @@ So basically Nginx will forward all requests with mapped url to fcgi_server proc
 
 ### Analysis
 The design has successfully decoupled the concern of html response and database connection and by using different efficient protocols or implementations, the performance requirements are met as well. However, some issues are not well addressed in the current implementation and there is plenty of room for improvement.
+
 1. file uploading functionality is still inside fcgi_server. Well this could be efficient as we are just writing file to disk directly, it is not scalable. Also if more requirements about security like file type validation ans size constraints are added, fcgi_server implementation has to be modified.
 2. as pointed in the item above, security issues like file type valiation and file size constraints are not imposed by the current implementation, which is not a good practice for web app security. A more severe issue is probably how we handle login right now, passwords are not encrypted in any way and the login state is denoted by setting username in cookie, which is just dirty and insecure. So SSL was set up to prevent others from intercepting parameters(Due to high CPU usage, the benchmarking was done merely for HTTP). Passwords should have been salted and encrypted and the username in cookie should be replaced with session id instead.
 3. further performance enhancement could be done by using prepared statements of MySQL C API, whose effect is more visible when database and tcpserver communication has to be done via network.
